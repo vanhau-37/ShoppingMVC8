@@ -7,7 +7,7 @@ using Shopping_mvc8.Repository;
 namespace Shopping_mvc8.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class BrandController : Controller
     {
         private readonly DataContext _dataContext;
@@ -15,9 +15,20 @@ namespace Shopping_mvc8.Areas.Admin.Controllers
         {
             _dataContext = dataContext;
         }
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int pg = 1)
         {
-            return View(await _dataContext.Brands.OrderByDescending(b => b.Id).ToListAsync());
+            List<BrandModel> brand = _dataContext.Brands.ToList();
+            const int pageSize = 10;
+            if (pg < 1)
+            {
+                pg = 1;
+            }
+            int recsCount = brand.Count();// dem so item 
+            var pager = new Paginate(recsCount, pg, pageSize);
+            int recSkip = (pg - 1) * pageSize;
+            var data = brand.Skip(recSkip).Take(pager.PageSize).ToList();
+            ViewBag.Pager = pager;
+            return View(data);
         }
 
         public async Task<IActionResult> Delete(int Id)

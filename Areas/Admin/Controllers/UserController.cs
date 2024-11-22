@@ -9,21 +9,28 @@ using System.Numerics;
 
 namespace Shopping_mvc8.Areas.Admin.Controllers
 {
-    [Area("Admin"), Authorize]
+    [Area("Admin")]
     [Route("Admin/User")]
+    [Authorize(Roles = "Admin")]
     public class UserController : Controller
     {
         private readonly UserManager<AppUserModel> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
-        public UserController(UserManager<AppUserModel> userManager, RoleManager<IdentityRole> roleManager)
+        private readonly DataContext _dataContext;
+        public UserController(UserManager<AppUserModel> userManager, RoleManager<IdentityRole> roleManager, DataContext dataContext)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _dataContext = dataContext;
         }
         [Route("Index")]
         public async Task<IActionResult> Index()
         {
-            return View(await _userManager.Users.OrderByDescending(u => u.Id).ToListAsync());
+            var usersWithRoles = await (from u in _dataContext.Users
+                                        join ur in _dataContext.UserRoles on u.Id equals ur.UserId
+                                        join r in _dataContext.Roles on ur.RoleId equals r.Id
+                                        select new { User = u, RoleName = r.Name }).ToListAsync();
+            return View(usersWithRoles);
         }
         [Route("Create")]
         [HttpGet]
@@ -41,9 +48,16 @@ namespace Shopping_mvc8.Areas.Admin.Controllers
         {
             if(ModelState.IsValid)
             {
-                var createUserResult = await _userManager.CreateAsync(user, user.PasswordHash);
+                var createUserResult = await _userManager.CreateAsync(user, user.PasswordHash);//tạo user
                 if(createUserResult.Succeeded)
                 {
+                    var newUser = await _userManager.FindByEmailAsync(user.Email);//lấy user vừa tạo 
+                    var role = _roleManager.FindByIdAsync(newUser.RoleId);//lấy role
+                    var addToRoleResult = await _userManager.AddToRoleAsync(newUser, role.Result.Name);
+                    if (!addToRoleResult.Succeeded)
+                    {
+                        AddIdentityErrors(addToRoleResult);
+                    }
                     return RedirectToAction("Index");
                 }
                 else
@@ -132,10 +146,10 @@ namespace Shopping_mvc8.Areas.Admin.Controllers
                     return View(existingUser);
                 }
             }
-            else
-            {
-                return View(existingUser);
-            }
+            var roles = await _roleManager.Roles.ToListAsync();
+            ViewBag.Roles = new SelectList(roles, "Id", "Name");
+            return View(existingUser);
+            
 
         }
 

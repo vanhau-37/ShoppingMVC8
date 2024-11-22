@@ -43,7 +43,7 @@ namespace Shopping_mvc8.Controllers
 		{
 			if(ModelState.IsValid)
 			{
-				AppUserModel newuser = new AppUserModel { UserName = user.UserName, Email = user.Email};
+				AppUserModel newuser = new AppUserModel { UserName = user.UserName, Email = user.Email, RoleId = "1"};
 				IdentityResult result = await _userManager.CreateAsync(newuser,user.Password);
 				if(result.Succeeded)
 				{

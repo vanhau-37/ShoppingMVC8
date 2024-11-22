@@ -8,7 +8,7 @@ using Shopping_mvc8.Repository;
 namespace Shopping_mvc8.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class ProductController : Controller
     {
         private readonly DataContext _dataContext;
@@ -18,9 +18,20 @@ namespace Shopping_mvc8.Areas.Admin.Controllers
             _dataContext = Context;
             _webHostEnvironment = webHostEnvironment;
         }
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int pg=1)
         {
-            return View(await _dataContext.Products.OrderByDescending(p =>p.Id).Include(p => p.Category).Include(p => p.Brand).ToListAsync());
+            List<ProductModel> product = _dataContext.Products.OrderByDescending(p => p.Id).Include(p => p.Category).Include(p => p.Brand).ToList();
+            const int pageSize = 3;
+            if (pg < 1)
+            {
+                pg = 1;
+            }
+            int recsCount = product.Count();
+            var pager = new Paginate(recsCount,pg,pageSize);
+            int recSkip = (pg-1)*pageSize;
+            var data = product.Skip(recSkip).Take(pager.PageSize).ToList();
+            ViewBag.Pager = pager;
+            return View(data);
         }
         [HttpGet]
         public IActionResult Create()
